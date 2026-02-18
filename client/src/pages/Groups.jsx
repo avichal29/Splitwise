@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api';
-import { Users, Plus, Search, X, ArrowRight, Sparkles } from 'lucide-react';
+import { Users, Plus, Search, X, ArrowRight } from 'lucide-react';
 
 const GRADS = [
-  'from-violet-500 to-purple-600', 'from-pink-500 to-rose-500',
+  'from-teal-500 to-emerald-500', 'from-violet-500 to-purple-500',
   'from-cyan-500 to-blue-500', 'from-amber-500 to-orange-500',
-  'from-emerald-500 to-teal-500', 'from-red-500 to-pink-500',
-  'from-indigo-500 to-violet-500',
+  'from-rose-500 to-pink-500', 'from-indigo-500 to-blue-500',
+  'from-emerald-500 to-green-500',
 ];
 function getGrad(n) { return GRADS[(n || 'A').charCodeAt(0) % GRADS.length]; }
 
@@ -79,10 +79,10 @@ export default function Groups() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            👥 Groups
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-2.5">
+            <Users className="w-7 h-7 text-teal-500" /> Groups
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">Manage your expense squads</p>
+          <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Manage your expense groups</p>
         </div>
         <button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-2">
           <Plus className="w-5 h-5" /> New Group
@@ -95,7 +95,7 @@ export default function Groups() {
           <div className="modal-content max-w-md" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-primary-500" /> Create Group
+                <Plus className="w-5 h-5 text-teal-500" /> Create Group
               </h2>
               <button onClick={() => setShowCreate(false)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-surface-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
                 <X className="w-5 h-5" />
@@ -139,7 +139,7 @@ export default function Groups() {
                 {selectedMembers.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-3">
                     {selectedMembers.map(m => (
-                      <span key={m.id} className="inline-flex items-center gap-1.5 bg-primary-50 dark:bg-primary-500/15 text-primary-700 dark:text-primary-400 px-3 py-1.5 rounded-full text-sm font-medium">
+                      <span key={m.id} className="inline-flex items-center gap-1.5 bg-teal-50 dark:bg-teal-500/15 text-teal-700 dark:text-teal-400 px-3 py-1.5 rounded-full text-sm font-medium">
                         {m.name}
                         <button type="button" onClick={() => removeMember(m.id)} className="hover:text-red-500 transition-colors">
                           <X className="w-3.5 h-3.5" />
@@ -154,7 +154,7 @@ export default function Groups() {
                 <button type="submit" disabled={creating} className="btn-primary flex-1">
                   {creating ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto" />
-                  ) : 'Create Group 🚀'}
+                  ) : 'Create Group'}
                 </button>
               </div>
             </form>
@@ -165,8 +165,8 @@ export default function Groups() {
       {/* Groups List */}
       {groups.length === 0 ? (
         <div className="card text-center py-16">
-          <div className="w-20 h-20 rounded-3xl bg-primary-50 dark:bg-primary-500/10 flex items-center justify-center mx-auto mb-4">
-            <Users className="w-10 h-10 text-primary-400" />
+          <div className="w-20 h-20 rounded-3xl bg-teal-500/8 dark:bg-teal-500/10 flex items-center justify-center mx-auto mb-4">
+            <Users className="w-10 h-10 text-teal-400" />
           </div>
           <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No groups yet</h3>
           <p className="text-gray-500 dark:text-gray-400 text-sm max-w-xs mx-auto">Create a group to start splitting expenses with your squad!</p>
@@ -185,10 +185,10 @@ export default function Groups() {
                 <div className="flex-1 min-w-0">
                   <h3 className="font-bold text-gray-900 dark:text-white truncate text-lg">{g.name}</h3>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="badge-purple">{g.member_count} members</span>
+                    <span className="badge-teal">{g.member_count} members</span>
                   </div>
                 </div>
-                <ArrowRight className="w-5 h-5 text-gray-300 dark:text-surface-600 group-hover:text-primary-500 group-hover:translate-x-1 transition-all" />
+                <ArrowRight className="w-5 h-5 text-gray-300 dark:text-gray-600 group-hover:text-teal-500 group-hover:translate-x-1 transition-all" />
               </div>
               {g.description && (
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 truncate pl-[4.5rem]">{g.description}</p>

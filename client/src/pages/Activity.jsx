@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
-import { Receipt, ArrowLeftRight, Trash2, PlusCircle, Sparkles } from 'lucide-react';
+import { Receipt, ArrowLeftRight, Trash2, PlusCircle, Activity as ActivityIcon } from 'lucide-react';
 
 export default function Activity() {
   const { user } = useAuth();
@@ -36,7 +36,7 @@ export default function Activity() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="relative w-12 h-12"><div className="absolute inset-0 rounded-full border-4 border-primary-100 dark:border-surface-700"></div><div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary-500 animate-spin"></div></div>
+        <div className="relative w-12 h-12"><div className="absolute inset-0 rounded-full border-4 border-teal-100 dark:border-white/10"></div><div className="absolute inset-0 rounded-full border-4 border-transparent border-t-teal-500 animate-spin"></div></div>
       </div>
     );
   }
@@ -45,10 +45,10 @@ export default function Activity() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            📈 Activity
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-2.5">
+            <ActivityIcon className="w-7 h-7 text-teal-500" /> Activity
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">Your complete expense timeline</p>
+          <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Your complete expense timeline</p>
         </div>
         <Link to="/add-expense" className="btn-primary flex items-center gap-2 text-sm self-start">
           <PlusCircle className="w-4 h-4" /> Add Expense
@@ -56,26 +56,26 @@ export default function Activity() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 p-1 bg-gray-100 dark:bg-surface-800 rounded-xl w-fit">
+      <div className="flex gap-1 p-1 bg-black/5 dark:bg-white/5 rounded-2xl w-fit backdrop-blur-sm">
         <button
           onClick={() => setTab('expenses')}
-          className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+          className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
             tab === 'expenses'
-              ? 'bg-white dark:bg-surface-700 text-gray-900 dark:text-white shadow-sm'
+              ? 'bg-white dark:bg-white/10 text-gray-900 dark:text-white shadow-sm'
               : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
           }`}
         >
-          💸 Expenses ({expenses.length})
+          Expenses ({expenses.length})
         </button>
         <button
           onClick={() => setTab('settlements')}
-          className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+          className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
             tab === 'settlements'
-              ? 'bg-white dark:bg-surface-700 text-gray-900 dark:text-white shadow-sm'
+              ? 'bg-white dark:bg-white/10 text-gray-900 dark:text-white shadow-sm'
               : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
           }`}
         >
-          🤝 Settlements ({settlements.length})
+          Settlements ({settlements.length})
         </button>
       </div>
 
@@ -97,14 +97,14 @@ export default function Activity() {
               <div key={exp.id} className="card animate-slide-up" style={{ animationDelay: `${Math.min(i * 0.03, 0.3)}s` }}>
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-4 flex-1 min-w-0">
-                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center text-white shadow-md shrink-0 mt-0.5">
+                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center text-white shadow-md shrink-0 mt-0.5">
                       <Receipt className="w-5 h-5" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="font-bold text-gray-900 dark:text-white truncate">{exp.description}</p>
                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                         Paid by <span className="font-semibold text-gray-700 dark:text-gray-200">{exp.paid_by === user.id ? 'you' : exp.paid_by_name}</span>
-                        {exp.group_name && <span> in <span className="font-semibold text-primary-600 dark:text-primary-400">{exp.group_name}</span></span>}
+                        {exp.group_name && <span> in <span className="font-semibold text-teal-600 dark:text-teal-400">{exp.group_name}</span></span>}
                       </p>
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {exp.splits.map(s => (
@@ -145,7 +145,7 @@ export default function Activity() {
             settlements.map((s, i) => (
               <div key={s.id} className="card flex items-center justify-between animate-slide-up" style={{ animationDelay: `${Math.min(i * 0.03, 0.3)}s` }}>
                 <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white shadow-md">
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white shadow-md">
                     <ArrowLeftRight className="w-5 h-5" />
                   </div>
                   <div>

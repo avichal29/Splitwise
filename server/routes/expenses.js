@@ -85,6 +85,222 @@ router.post('/', auth, (req, res) => {
   }
 });
 
+router.get('/monthly', auth, (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Total spent by the user (expenses they paid) grouped by month - last 12 months
+    const paidByMonth = db.prepare(`
+      SELECT
+        strftime('%Y-%m', e.created_at) as month,
+        SUM(e.amount) as total_paid,
+        COUNT(e.id) as expense_count
+      FROM expenses e
+      WHERE e.paid_by = ?
+        AND e.created_at >= date('now', '-12 months')
+      GROUP BY strftime('%Y-%m', e.created_at)
+      ORDER BY month ASC
+    `).all(userId);
+
+    // User's share of expenses (what they owe from splits) grouped by month
+    const shareByMonth = db.prepare(`
+      SELECT
+        strftime('%Y-%m', e.created_at) as month,
+        SUM(es.amount) as total_share
+      FROM expense_splits es
+      JOIN expenses e ON e.id = es.expense_id
+      WHERE es.user_id = ?
+        AND e.created_at >= date('now', '-12 months')
+      GROUP BY strftime('%Y-%m', e.created_at)
+      ORDER BY month ASC
+    `).all(userId);
+
+    // Category breakdown for current month
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const categoryBreakdown = db.prepare(`
+      SELECT
+        CASE
+          WHEN e.description LIKE '%🍕%' THEN 'Food'
+          WHEN e.description LIKE '%🏠%' THEN 'Rent'
+          WHEN e.description LIKE '%🚗%' THEN 'Transport'
+          WHEN e.description LIKE '%🎬%' THEN 'Entertainment'
+          WHEN e.description LIKE '%🛒%' THEN 'Groceries'
+          WHEN e.description LIKE '%✈️%' THEN 'Travel'
+          WHEN e.description LIKE '%💡%' THEN 'Utilities'
+          ELSE 'Other'
+        END as category,
+        SUM(es.amount) as amount
+      FROM expense_splits es
+      JOIN expenses e ON e.id = es.expense_id
+      WHERE es.user_id = ?
+        AND strftime('%Y-%m', e.created_at) = ?
+      GROUP BY category
+      ORDER BY amount DESC
+    `).all(userId, currentMonth);
+
+    // Build a full 12-month array (use local date, not UTC)
+    const months = [];
+    const now = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      months.push(`${yyyy}-${mm}`);
+    }
+
+    const paidMap = {};
+    for (const row of paidByMonth) {
+      paidMap[row.month] = { total_paid: row.total_paid, expense_count: row.expense_count };
+    }
+    const shareMap = {};
+    for (const row of shareByMonth) {
+      shareMap[row.month] = row.total_share;
+    }
+
+    const monthly = months.map(m => ({
+      month: m,
+      total_paid: paidMap[m]?.total_paid || 0,
+      your_share: shareMap[m] || 0,
+      expense_count: paidMap[m]?.expense_count || 0,
+    }));
+
+    // Current month totals
+    const currentData = monthly.find(m => m.month === currentMonth) || { total_paid: 0, your_share: 0, expense_count: 0 };
+    const prevMonth = months.length >= 2 ? months[months.length - 2] : null;
+    const prevData = prevMonth ? (monthly.find(m => m.month === prevMonth) || { your_share: 0 }) : { your_share: 0 };
+
+    const changePercent = prevData.your_share > 0
+      ? parseFloat((((currentData.your_share - prevData.your_share) / prevData.your_share) * 100).toFixed(1))
+      : 0;
+
+    res.json({
+      monthly,
+      current_month: {
+        month: currentMonth,
+        total_paid: currentData.total_paid,
+        your_share: currentData.your_share,
+        expense_count: currentData.expense_count,
+        change_percent: changePercent,
+      },
+      categories: categoryBreakdown,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Bulk import from CSV (frontend parses file, sends JSON array)
+router.post('/import', auth, (req, res) => {
+  try {
+    const { transactions } = req.body;
+    if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
+      return res.status(400).json({ error: 'No transactions provided' });
+    }
+
+    const insertExpense = db.prepare(
+      'INSERT INTO expenses (description, amount, paid_by, split_type) VALUES (?, ?, ?, ?)'
+    );
+    const insertSplit = db.prepare(
+      'INSERT INTO expense_splits (expense_id, user_id, amount) VALUES (?, ?, ?)'
+    );
+
+    const importAll = db.transaction((txns) => {
+      const imported = [];
+      for (const txn of txns) {
+        if (!txn.description || !txn.amount || txn.amount <= 0) continue;
+        const result = insertExpense.run(txn.description, txn.amount, req.user.id, 'equal');
+        insertSplit.run(result.lastInsertRowid, req.user.id, txn.amount);
+        imported.push({ id: result.lastInsertRowid, description: txn.description, amount: txn.amount });
+      }
+      return imported;
+    });
+
+    const imported = importAll(transactions);
+    res.status(201).json({ message: `${imported.length} expenses imported`, expenses: imported });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Quick add - parse natural language into expense
+router.post('/quick', auth, (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text || text.trim().length === 0) {
+      return res.status(400).json({ error: 'Text is required' });
+    }
+
+    const input = text.trim();
+
+    // Parse amount - find numbers (with optional decimals)
+    const amountMatch = input.match(/(?:rs\.?|₹|inr)?\s*(\d+(?:\.\d{1,2})?)/i);
+    if (!amountMatch) {
+      return res.status(400).json({ error: 'Could not find an amount. Try: "paid 500 for dinner"' });
+    }
+    const amount = parseFloat(amountMatch[1]);
+    if (amount <= 0) {
+      return res.status(400).json({ error: 'Amount must be greater than 0' });
+    }
+
+    // Parse description - remove amount and common filler words
+    let description = input
+      .replace(/(?:rs\.?|₹|inr)?\s*\d+(?:\.\d{1,2})?/i, '')
+      .replace(/\b(paid|spent|for|on|at|to|in|via|through|using|from)\b/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!description) {
+      description = 'Quick expense';
+    }
+    // Capitalize first letter
+    description = description.charAt(0).toUpperCase() + description.slice(1);
+
+    // Auto-detect category
+    const categoryMap = {
+      '🍕': ['food', 'dinner', 'lunch', 'breakfast', 'snack', 'eat', 'restaurant', 'cafe', 'coffee', 'tea', 'pizza', 'burger', 'biryani', 'swiggy', 'zomato', 'dominos'],
+      '🚗': ['uber', 'ola', 'cab', 'taxi', 'fuel', 'petrol', 'diesel', 'gas', 'auto', 'rickshaw', 'metro', 'bus', 'transport', 'rapido', 'parking'],
+      '🛒': ['grocery', 'groceries', 'supermarket', 'blinkit', 'bigbasket', 'zepto', 'dmart', 'vegetables', 'fruits', 'milk'],
+      '🎬': ['movie', 'cinema', 'netflix', 'prime', 'hotstar', 'spotify', 'entertainment', 'game', 'concert', 'show'],
+      '🏠': ['rent', 'electricity', 'water', 'maintenance', 'house', 'flat', 'apartment', 'society'],
+      '✈️': ['flight', 'hotel', 'travel', 'trip', 'vacation', 'holiday', 'booking', 'train', 'irctc', 'makemytrip'],
+      '💡': ['bill', 'recharge', 'wifi', 'internet', 'phone', 'jio', 'airtel', 'vi', 'broadband', 'electricity'],
+    };
+
+    let emoji = '🎁';
+    const lowerInput = input.toLowerCase();
+    for (const [cat, keywords] of Object.entries(categoryMap)) {
+      if (keywords.some(kw => lowerInput.includes(kw))) {
+        emoji = cat;
+        break;
+      }
+    }
+
+    const fullDescription = `${emoji} ${description}`;
+
+    // Create the expense
+    const result = db.prepare(
+      'INSERT INTO expenses (description, amount, paid_by, split_type) VALUES (?, ?, ?, ?)'
+    ).run(fullDescription, amount, req.user.id, 'equal');
+
+    const expenseId = result.lastInsertRowid;
+    db.prepare('INSERT INTO expense_splits (expense_id, user_id, amount) VALUES (?, ?, ?)').run(expenseId, req.user.id, amount);
+
+    const expense = db.prepare(`
+      SELECT e.*, u.name as paid_by_name FROM expenses e
+      JOIN users u ON u.id = e.paid_by WHERE e.id = ?
+    `).get(expenseId);
+
+    expense.splits = db.prepare(`
+      SELECT es.*, u.name as user_name FROM expense_splits es
+      JOIN users u ON u.id = es.user_id WHERE es.expense_id = ?
+    `).all(expenseId);
+
+    res.status(201).json(expense);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.delete('/:id', auth, (req, res) => {
   try {
     const expense = db.prepare('SELECT * FROM expenses WHERE id = ? AND paid_by = ?').get(req.params.id, req.user.id);

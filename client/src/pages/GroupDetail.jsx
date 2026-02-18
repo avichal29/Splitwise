@@ -3,13 +3,13 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
-import { ArrowLeft, Trash2, UserPlus, Receipt, ArrowLeftRight, Search, X, Sparkles } from 'lucide-react';
+import { ArrowLeft, Trash2, UserPlus, Receipt, ArrowLeftRight, Search, X } from 'lucide-react';
 
 const GRADS = [
-  'from-violet-500 to-purple-600', 'from-pink-500 to-rose-500',
+  'from-teal-500 to-emerald-500', 'from-violet-500 to-purple-500',
   'from-cyan-500 to-blue-500', 'from-amber-500 to-orange-500',
-  'from-emerald-500 to-teal-500', 'from-red-500 to-pink-500',
-  'from-indigo-500 to-violet-500',
+  'from-rose-500 to-pink-500', 'from-indigo-500 to-blue-500',
+  'from-emerald-500 to-green-500',
 ];
 function getGrad(n) { return GRADS[(n || 'A').charCodeAt(0) % GRADS.length]; }
 
@@ -76,7 +76,7 @@ export default function GroupDetail() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="relative w-12 h-12"><div className="absolute inset-0 rounded-full border-4 border-primary-100 dark:border-surface-700"></div><div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary-500 animate-spin"></div></div>
+        <div className="relative w-12 h-12"><div className="absolute inset-0 rounded-full border-4 border-teal-100 dark:border-white/10"></div><div className="absolute inset-0 rounded-full border-4 border-transparent border-t-teal-500 animate-spin"></div></div>
       </div>
     );
   }
@@ -114,8 +114,8 @@ export default function GroupDetail() {
       {/* Members */}
       <div className="card">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">👥 Members <span className="badge-purple">{group.members.length}</span></h2>
-          <button onClick={() => setShowAddMember(!showAddMember)} className="text-sm text-primary-500 hover:text-primary-600 dark:text-primary-400 flex items-center gap-1 font-medium">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2"><UserPlus className="w-5 h-5 text-teal-500" /> Members <span className="badge-teal">{group.members.length}</span></h2>
+          <button onClick={() => setShowAddMember(!showAddMember)} className="text-sm text-teal-500 hover:text-teal-600 dark:text-teal-400 flex items-center gap-1 font-medium">
             <UserPlus className="w-4 h-4" /> Add
           </button>
         </div>
@@ -127,7 +127,7 @@ export default function GroupDetail() {
               </div>
               <span className="text-sm font-semibold text-gray-900 dark:text-white">{m.name}{m.id === user.id ? ' (you)' : ''}</span>
               {m.id !== user.id && (
-                <button onClick={() => { setSettleUser(m); setShowSettle(true); }} className="ml-1 text-primary-500 hover:text-primary-700 dark:hover:text-primary-300 transition-colors" title="Settle up">
+                <button onClick={() => { setSettleUser(m); setShowSettle(true); }} className="ml-1 text-teal-500 hover:text-teal-700 dark:hover:text-teal-300 transition-colors" title="Settle up">
                   <ArrowLeftRight className="w-4 h-4" />
                 </button>
               )}
@@ -165,9 +165,9 @@ export default function GroupDetail() {
           <div className="modal-content max-w-sm" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-primary-500" /> Settle with {settleUser.name}
+                <ArrowLeftRight className="w-5 h-5 text-teal-500" /> Settle Up
               </h2>
-              <button onClick={() => setShowSettle(false)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-surface-700 text-gray-400 transition-colors"><X className="w-5 h-5" /></button>
+              <button onClick={() => setShowSettle(false)} className="p-1.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 transition-colors"><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleSettle} className="space-y-4">
               <div>
@@ -176,7 +176,7 @@ export default function GroupDetail() {
               </div>
               <div className="flex gap-3 pt-1">
                 <button type="button" onClick={() => setShowSettle(false)} className="btn-secondary flex-1">Cancel</button>
-                <button type="submit" className="btn-primary flex-1">Settle Up 🤝</button>
+                <button type="submit" className="btn-primary flex-1">Settle Up</button>
               </div>
             </form>
           </div>
@@ -185,14 +185,14 @@ export default function GroupDetail() {
 
       {/* Expenses */}
       <div className="card">
-        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">💸 Expenses</h2>
+        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2"><Receipt className="w-5 h-5 text-teal-500" /> Expenses</h2>
         {group.expenses.length === 0 ? (
           <div className="text-center py-10">
             <div className="w-14 h-14 rounded-2xl bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center mx-auto mb-3">
               <Receipt className="w-7 h-7 text-orange-400" />
             </div>
             <p className="text-gray-500 dark:text-gray-400 text-sm">No expenses in this group yet</p>
-            <Link to={`/add-expense?group=${id}`} className="text-primary-500 text-sm font-medium mt-1 inline-block hover:underline">Add one →</Link>
+            <Link to={`/add-expense?group=${id}`} className="text-teal-500 text-sm font-medium mt-1 inline-block hover:underline">Add one →</Link>
           </div>
         ) : (
           <div className="space-y-3">
@@ -231,7 +231,7 @@ export default function GroupDetail() {
       {/* Settlements */}
       {group.settlements.length > 0 && (
         <div className="card">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">🤝 Settlements</h2>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2"><ArrowLeftRight className="w-5 h-5 text-teal-500" /> Settlements</h2>
           <div className="space-y-3">
             {group.settlements.map(s => (
               <div key={s.id} className="flex items-center justify-between p-4 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl border border-emerald-100 dark:border-emerald-500/20">
