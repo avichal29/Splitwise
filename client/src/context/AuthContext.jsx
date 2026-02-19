@@ -13,12 +13,19 @@ export function AuthProvider({ children }) {
     if (token && savedUser) {
       setUser(JSON.parse(savedUser));
       api.get('/auth/me').then(res => {
-        setUser(res.data);
-        localStorage.setItem('user', JSON.stringify(res.data));
-      }).catch(() => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        setUser(null);
+        if (res.data && !res.data._offline) {
+          setUser(res.data);
+          localStorage.setItem('user', JSON.stringify(res.data));
+        }
+      }).catch((err) => {
+        // If offline / network error, keep the saved user
+        if (!err.response && !navigator.onLine) {
+          // stay logged in with cached user
+        } else {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          setUser(null);
+        }
       }).finally(() => setLoading(false));
     } else {
       setLoading(false);

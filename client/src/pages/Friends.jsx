@@ -84,13 +84,14 @@ export default function Friends() {
         <h2 className="text-base font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
           <Search className="w-4 h-4 text-teal-500" /> Add a Friend
         </h2>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">Search by email address to find and add friends</p>
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
           <input
             value={searchQuery}
             onChange={e => searchUsers(e.target.value)}
             className="input-field pl-11"
-            placeholder="Search by name or email..."
+            placeholder="Enter email address to find someone..."
           />
         </div>
         {searchResults.length > 0 && (

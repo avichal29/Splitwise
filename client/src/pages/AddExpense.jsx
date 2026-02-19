@@ -198,7 +198,7 @@ export default function AddExpense() {
         splits
       });
 
-      navigate(groupId ? `/groups/${groupId}` : '/');
+      navigate(groupId ? `/groups/${groupId}` : '/dashboard');
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to add expense');
     } finally {
@@ -228,17 +228,18 @@ export default function AddExpense() {
 
       {/* Quick Add */}
       <div className="card">
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-1">
           <Zap className="w-4 h-4 text-amber-500" />
-          <h2 className="text-sm font-bold text-gray-900 dark:text-white">Quick Add</h2>
-          <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">Type naturally, we'll parse it</span>
+          <h2 className="text-sm font-bold text-gray-900 dark:text-white">Smart Add</h2>
+          <span className="text-[10px] bg-violet-100 dark:bg-violet-500/15 text-violet-600 dark:text-violet-400 px-1.5 py-0.5 rounded-full font-semibold">AI</span>
         </div>
+        <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-3">Auto-categorizes, detects friend names &amp; splits automatically</p>
         <form onSubmit={handleQuickAdd} className="flex gap-2">
           <input
             value={quickText}
             onChange={e => setQuickText(e.target.value)}
             className="input-field flex-1"
-            placeholder='e.g. "paid 500 for dinner at swiggy" or "uber 250"'
+            placeholder='e.g. "dinner 500 with Rahul" or "uber 250"'
           />
           <button type="submit" disabled={quickLoading} className="btn-primary px-5 flex items-center gap-1.5 shrink-0">
             {quickLoading ? (
@@ -249,21 +250,37 @@ export default function AddExpense() {
           </button>
         </form>
         {quickResult && (
-          <div className={`mt-3 p-3 rounded-xl flex items-center gap-2 text-sm animate-slide-up ${
+          <div className={`mt-3 p-3 rounded-xl text-sm animate-slide-up ${
             quickResult.success
               ? 'bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400 border border-teal-200 dark:border-teal-500/20'
               : 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/20'
           }`}>
             {quickResult.success ? (
-              <>
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span>Added <strong>{quickResult.expense.description}</strong> — {formatAmount(quickResult.expense.amount)}</span>
-              </>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>Added <strong>{quickResult.expense.description}</strong> — {formatAmount(quickResult.expense.amount)}</span>
+                </div>
+                {quickResult.expense.ai_parsed && (
+                  <div className="flex flex-wrap gap-2 ml-6">
+                    {quickResult.expense.ai_parsed.detected_friends.length > 0 && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-500/15 text-violet-600 dark:text-violet-400">
+                        Split with {quickResult.expense.ai_parsed.detected_friends.join(', ')} — {formatAmount(quickResult.expense.ai_parsed.per_person)} each
+                      </span>
+                    )}
+                    {quickResult.expense.ai_parsed.split_count === 1 && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-gray-400">
+                        Personal expense
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
             ) : (
-              <>
+              <div className="flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{quickResult.error}</span>
-              </>
+              </div>
             )}
           </div>
         )}

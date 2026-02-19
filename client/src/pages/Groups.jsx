@@ -32,7 +32,8 @@ export default function Groups() {
     setSearchQuery(q);
     if (q.length < 2) { setSearchResults([]); return; }
     try {
-      const res = await api.get(`/auth/users/search?q=${q}`);
+      // Only search within friends (privacy: can't add arbitrary users)
+      const res = await api.get(`/auth/users/friends-search?q=${q}`);
       setSearchResults(res.data.filter(u => !selectedMembers.find(m => m.id === u.id)));
     } catch (err) { console.error(err); }
   };
@@ -118,7 +119,7 @@ export default function Groups() {
                     value={searchQuery}
                     onChange={e => searchUsers(e.target.value)}
                     className="input-field pl-11"
-                    placeholder="Search by name or email..."
+                    placeholder="Search your friends to add..."
                   />
                 </div>
                 {searchResults.length > 0 && (

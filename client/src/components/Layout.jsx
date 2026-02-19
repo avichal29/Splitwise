@@ -3,9 +3,11 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useTheme } from '../context/ThemeContext';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import {
   LayoutDashboard, Users, PlusCircle, Activity, UserPlus,
-  LogOut, Sun, Moon, Menu, X, Wallet, ChevronDown, Check
+  LogOut, Sun, Moon, Menu, X, Wallet, ChevronDown, Check,
+  Wifi, WifiOff, RefreshCw, CloudOff
 } from 'lucide-react';
 
 const AVATAR_GRADIENTS = [
@@ -28,17 +30,18 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const { currency, currencies, changeCurrency } = useCurrency();
   const { dark, toggleTheme } = useTheme();
+  const { isOnline, syncing, pendingCount, syncPendingActions } = useOnlineStatus();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [currencyOpen, setCurrencyOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/welcome');
   };
 
   const navItems = [
-    { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/groups', icon: Users, label: 'Groups' },
     { to: '/add-expense', icon: PlusCircle, label: 'Add Expense' },
     { to: '/activity', icon: Activity, label: 'Activity' },
@@ -191,6 +194,41 @@ export default function Layout() {
 
       {/* Main Content */}
       <main className="flex-1 lg:ml-[260px] pt-16 lg:pt-0">
+        {/* Offline Banner */}
+        {!isOnline && (
+          <div className="bg-amber-500/90 dark:bg-amber-600/90 backdrop-blur-sm text-white px-4 py-2.5 flex items-center justify-center gap-2 text-sm font-semibold shadow-lg">
+            <WifiOff className="w-4 h-4" />
+            You're offline — changes will sync when you reconnect
+            {pendingCount > 0 && (
+              <span className="ml-1 bg-white/20 px-2 py-0.5 rounded-full text-xs">
+                {pendingCount} pending
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Syncing Banner */}
+        {isOnline && syncing && (
+          <div className="bg-teal-500/90 dark:bg-teal-600/90 backdrop-blur-sm text-white px-4 py-2 flex items-center justify-center gap-2 text-sm font-semibold">
+            <RefreshCw className="w-4 h-4 animate-spin" />
+            Syncing offline changes...
+          </div>
+        )}
+
+        {/* Pending items when back online */}
+        {isOnline && !syncing && pendingCount > 0 && (
+          <div className="bg-blue-500/90 dark:bg-blue-600/90 backdrop-blur-sm text-white px-4 py-2 flex items-center justify-center gap-2 text-sm font-semibold">
+            <CloudOff className="w-4 h-4" />
+            {pendingCount} offline action{pendingCount > 1 ? 's' : ''} pending
+            <button
+              onClick={syncPendingActions}
+              className="ml-2 bg-white/20 hover:bg-white/30 px-3 py-0.5 rounded-full text-xs font-bold transition-colors"
+            >
+              Sync Now
+            </button>
+          </div>
+        )}
+
         <div className="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
           <Outlet />
         </div>

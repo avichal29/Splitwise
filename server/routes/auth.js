@@ -63,14 +63,37 @@ router.get('/me', auth, (req, res) => {
   }
 });
 
+// Search users by exact email only (privacy: no name-based discovery)
 router.get('/users/search', auth, (req, res) => {
   try {
     const { q } = req.query;
-    if (!q) return res.json([]);
+    if (!q || q.length < 3) return res.json([]);
+
+    // Only match by email (exact or partial email match) — never expose by name alone
     const users = db.prepare(
-      'SELECT id, name, email FROM users WHERE (name LIKE ? OR email LIKE ?) AND id != ?'
-    ).all(`%${q}%`, `%${q}%`, req.user.id);
+      'SELECT id, name, email FROM users WHERE email LIKE ? AND id != ?'
+    ).all(`%${q}%`, req.user.id);
     res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Search only within current user's friends (for expense splitting, group adding, etc.)
+router.get('/users/friends-search', auth, (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q) return res.json([]);
+    const friends = db.prepare(`
+      SELECT u.id, u.name, u.email FROM friends f
+      JOIN users u ON u.id = f.friend_id
+      WHERE f.user_id = ? AND (u.name LIKE ? OR u.email LIKE ?)
+      UNION
+      SELECT u.id, u.name, u.email FROM friends f
+      JOIN users u ON u.id = f.user_id
+      WHERE f.friend_id = ? AND (u.name LIKE ? OR u.email LIKE ?)
+    `).all(req.user.id, `%${q}%`, `%${q}%`, req.user.id, `%${q}%`, `%${q}%`);
+    res.json(friends);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

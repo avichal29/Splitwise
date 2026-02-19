@@ -31,6 +31,10 @@ router.get('/:id', auth, (req, res) => {
 
     if (!group) return res.status(404).json({ error: 'Group not found' });
 
+    // Verify membership
+    const isMember = db.prepare('SELECT 1 FROM group_members WHERE group_id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    if (!isMember) return res.status(403).json({ error: 'You are not a member of this group' });
+
     const members = db.prepare(`
       SELECT u.id, u.name, u.email FROM group_members gm
       JOIN users u ON u.id = gm.user_id
@@ -99,6 +103,16 @@ router.post('/:id/members', auth, (req, res) => {
   try {
     const { user_id } = req.body;
     if (!user_id) return res.status(400).json({ error: 'user_id is required' });
+
+    // Verify requester is a member
+    const isMember = db.prepare('SELECT 1 FROM group_members WHERE group_id = ? AND user_id = ?').get(req.params.id, req.user.id);
+    if (!isMember) return res.status(403).json({ error: 'You are not a member of this group' });
+
+    // Only allow adding friends, not arbitrary users
+    const isFriend = db.prepare(
+      'SELECT 1 FROM friends WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)'
+    ).get(req.user.id, user_id, user_id, req.user.id);
+    if (!isFriend) return res.status(400).json({ error: 'You can only add your friends to groups' });
 
     db.prepare('INSERT OR IGNORE INTO group_members (group_id, user_id) VALUES (?, ?)').run(req.params.id, user_id);
     res.status(201).json({ message: 'Member added' });

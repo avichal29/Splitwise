@@ -222,7 +222,7 @@ router.post('/import', auth, (req, res) => {
   }
 });
 
-// Quick add - parse natural language into expense
+// Agentic quick add - parse natural language, detect friends, auto-categorize, auto-split
 router.post('/quick', auth, (req, res) => {
   try {
     const { text } = req.body;
@@ -231,43 +231,70 @@ router.post('/quick', auth, (req, res) => {
     }
 
     const input = text.trim();
+    const lowerInput = input.toLowerCase();
 
-    // Parse amount - find numbers (with optional decimals)
+    // ─── Step 1: Parse amount ───
     const amountMatch = input.match(/(?:rs\.?|₹|inr)?\s*(\d+(?:\.\d{1,2})?)/i);
     if (!amountMatch) {
-      return res.status(400).json({ error: 'Could not find an amount. Try: "paid 500 for dinner"' });
+      return res.status(400).json({ error: 'Could not find an amount. Try: "dinner 500 with Rahul"' });
     }
     const amount = parseFloat(amountMatch[1]);
     if (amount <= 0) {
       return res.status(400).json({ error: 'Amount must be greater than 0' });
     }
 
-    // Parse description - remove amount and common filler words
+    // ─── Step 2: Detect friends mentioned in text ───
+    const userFriends = db.prepare(`
+      SELECT u.id, u.name FROM friends f
+      JOIN users u ON u.id = f.friend_id
+      WHERE f.user_id = ?
+      UNION
+      SELECT u.id, u.name FROM friends f
+      JOIN users u ON u.id = f.user_id
+      WHERE f.friend_id = ?
+    `).all(req.user.id, req.user.id);
+
+    const mentionedFriends = [];
+    const friendNameTokens = [];
+    for (const friend of userFriends) {
+      const friendName = friend.name.toLowerCase();
+      const firstName = friendName.split(' ')[0];
+      // Check if friend's first name appears in the input
+      if (lowerInput.includes(firstName) && firstName.length >= 2) {
+        mentionedFriends.push(friend);
+        friendNameTokens.push(firstName);
+      }
+    }
+
+    // ─── Step 3: Parse description ───
     let description = input
       .replace(/(?:rs\.?|₹|inr)?\s*\d+(?:\.\d{1,2})?/i, '')
-      .replace(/\b(paid|spent|for|on|at|to|in|via|through|using|from)\b/gi, ' ')
+      .replace(/\b(paid|spent|for|on|at|to|in|via|through|using|from|with|split|between|and|rupees?)\b/gi, ' ')
       .replace(/\s+/g, ' ')
       .trim();
+
+    // Remove matched friend names from description to keep it clean
+    for (const token of friendNameTokens) {
+      description = description.replace(new RegExp(`\\b${token}\\b`, 'gi'), '').trim();
+    }
 
     if (!description) {
       description = 'Quick expense';
     }
-    // Capitalize first letter
     description = description.charAt(0).toUpperCase() + description.slice(1);
 
-    // Auto-detect category
+    // ─── Step 4: Auto-detect category (expanded keywords) ───
     const categoryMap = {
-      '🍕': ['food', 'dinner', 'lunch', 'breakfast', 'snack', 'eat', 'restaurant', 'cafe', 'coffee', 'tea', 'pizza', 'burger', 'biryani', 'swiggy', 'zomato', 'dominos'],
-      '🚗': ['uber', 'ola', 'cab', 'taxi', 'fuel', 'petrol', 'diesel', 'gas', 'auto', 'rickshaw', 'metro', 'bus', 'transport', 'rapido', 'parking'],
-      '🛒': ['grocery', 'groceries', 'supermarket', 'blinkit', 'bigbasket', 'zepto', 'dmart', 'vegetables', 'fruits', 'milk'],
-      '🎬': ['movie', 'cinema', 'netflix', 'prime', 'hotstar', 'spotify', 'entertainment', 'game', 'concert', 'show'],
-      '🏠': ['rent', 'electricity', 'water', 'maintenance', 'house', 'flat', 'apartment', 'society'],
-      '✈️': ['flight', 'hotel', 'travel', 'trip', 'vacation', 'holiday', 'booking', 'train', 'irctc', 'makemytrip'],
-      '💡': ['bill', 'recharge', 'wifi', 'internet', 'phone', 'jio', 'airtel', 'vi', 'broadband', 'electricity'],
+      '🍕': ['food', 'dinner', 'lunch', 'breakfast', 'snack', 'eat', 'restaurant', 'cafe', 'coffee', 'tea', 'pizza', 'burger', 'biryani', 'swiggy', 'zomato', 'dominos', 'kfc', 'mcd', 'mcdonalds', 'starbucks', 'chai', 'maggi', 'noodles', 'thali', 'dosa', 'idli', 'paratha', 'momos', 'chicken', 'paneer', 'dal', 'rice', 'roti', 'naan', 'tandoori', 'bbq', 'grill', 'sushi', 'pasta', 'cake', 'icecream', 'dessert', 'juice', 'lassi', 'shake', 'boba'],
+      '🚗': ['uber', 'ola', 'cab', 'taxi', 'fuel', 'petrol', 'diesel', 'gas', 'auto', 'rickshaw', 'metro', 'bus', 'transport', 'rapido', 'parking', 'toll', 'car', 'bike', 'scooter', 'drive', 'ride', 'commute'],
+      '🛒': ['grocery', 'groceries', 'supermarket', 'blinkit', 'bigbasket', 'zepto', 'dmart', 'vegetables', 'fruits', 'milk', 'bread', 'eggs', 'flour', 'oil', 'spices', 'provision', 'kirana', 'reliance fresh', 'more', 'spar'],
+      '🎬': ['movie', 'cinema', 'netflix', 'prime', 'hotstar', 'spotify', 'entertainment', 'game', 'concert', 'show', 'pvr', 'inox', 'bookmyshow', 'imax', 'theatre', 'youtube', 'subscription', 'ott'],
+      '🏠': ['rent', 'maintenance', 'house', 'flat', 'apartment', 'society', 'landlord', 'deposit', 'pg', 'hostel', 'room'],
+      '✈️': ['flight', 'hotel', 'travel', 'trip', 'vacation', 'holiday', 'booking', 'train', 'irctc', 'makemytrip', 'goibibo', 'oyo', 'airbnb', 'resort', 'cleartrip', 'yatra', 'tourism'],
+      '💡': ['bill', 'recharge', 'wifi', 'internet', 'phone', 'jio', 'airtel', 'vi', 'broadband', 'electricity', 'water bill', 'gas bill', 'postpaid', 'prepaid', 'dth', 'tata sky'],
     };
 
     let emoji = '🎁';
-    const lowerInput = input.toLowerCase();
     for (const [cat, keywords] of Object.entries(categoryMap)) {
       if (keywords.some(kw => lowerInput.includes(kw))) {
         emoji = cat;
@@ -277,13 +304,23 @@ router.post('/quick', auth, (req, res) => {
 
     const fullDescription = `${emoji} ${description}`;
 
-    // Create the expense
+    // ─── Step 5: Create expense & splits ───
+    const splitWith = [req.user.id, ...mentionedFriends.map(f => f.id)];
+    const splitAmount = parseFloat((amount / splitWith.length).toFixed(2));
+
     const result = db.prepare(
       'INSERT INTO expenses (description, amount, paid_by, split_type) VALUES (?, ?, ?, ?)'
     ).run(fullDescription, amount, req.user.id, 'equal');
 
     const expenseId = result.lastInsertRowid;
-    db.prepare('INSERT INTO expense_splits (expense_id, user_id, amount) VALUES (?, ?, ?)').run(expenseId, req.user.id, amount);
+
+    const insertSplit = db.prepare('INSERT INTO expense_splits (expense_id, user_id, amount) VALUES (?, ?, ?)');
+    const addSplits = db.transaction((ids) => {
+      for (const id of ids) {
+        insertSplit.run(expenseId, id, splitAmount);
+      }
+    });
+    addSplits(splitWith);
 
     const expense = db.prepare(`
       SELECT e.*, u.name as paid_by_name FROM expenses e
@@ -294,6 +331,14 @@ router.post('/quick', auth, (req, res) => {
       SELECT es.*, u.name as user_name FROM expense_splits es
       JOIN users u ON u.id = es.user_id WHERE es.expense_id = ?
     `).all(expenseId);
+
+    // Include AI insights in response
+    expense.ai_parsed = {
+      detected_category: Object.entries(categoryMap).find(([k]) => k === emoji)?.[0] ? emoji : 'Other',
+      detected_friends: mentionedFriends.map(f => f.name),
+      split_count: splitWith.length,
+      per_person: splitAmount,
+    };
 
     res.status(201).json(expense);
   } catch (err) {

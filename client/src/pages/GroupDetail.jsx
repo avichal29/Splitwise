@@ -37,7 +37,8 @@ export default function GroupDetail() {
     setSearchQuery(q);
     if (q.length < 2) { setSearchResults([]); return; }
     try {
-      const res = await api.get(`/auth/users/search?q=${q}`);
+      // Only search within friends (privacy: can't add arbitrary users)
+      const res = await api.get(`/auth/users/friends-search?q=${q}`);
       const memberIds = group.members.map(m => m.id);
       setSearchResults(res.data.filter(u => !memberIds.includes(u.id)));
     } catch (err) { console.error(err); }
@@ -139,7 +140,7 @@ export default function GroupDetail() {
           <div className="mt-4 p-4 border border-gray-200 dark:border-surface-600 rounded-xl bg-gray-50 dark:bg-surface-700/30 animate-scale-in">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input value={searchQuery} onChange={e => searchUsers(e.target.value)} className="input-field pl-11" placeholder="Search users to add..." autoFocus />
+              <input value={searchQuery} onChange={e => searchUsers(e.target.value)} className="input-field pl-11" placeholder="Search your friends to add..." autoFocus />
             </div>
             {searchResults.length > 0 && (
               <div className="mt-2 border border-gray-200 dark:border-surface-600 rounded-xl bg-white dark:bg-surface-800 shadow-xl max-h-40 overflow-y-auto">
