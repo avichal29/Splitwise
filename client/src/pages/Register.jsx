@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { Wallet, Mail, Lock, User, ArrowRight, Sun, Moon, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, Sun, Moon, Eye, EyeOff } from 'lucide-react';
+import Logo from '../components/Logo';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -40,9 +41,7 @@ export default function Register() {
 
       <div className="max-w-[420px] w-full animate-slide-up">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center mx-auto mb-5 shadow-xl shadow-teal-500/25 animate-float">
-            <Wallet className="w-8 h-8 text-white" />
-          </div>
+          <Logo size={64} className="rounded-2xl mx-auto mb-5 shadow-xl shadow-teal-500/25" animated />
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Join SplitKaro</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm">
             Start splitting expenses with friends

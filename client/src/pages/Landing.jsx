@@ -1,12 +1,14 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import {
-  Wallet, ArrowRight, Users, Shield, Zap, Globe, Sparkles,
+  ArrowRight, Users, Shield, Zap, Globe, Sparkles,
   Sun, Moon, CheckCircle2, Star, Brain, Bot, Wand2, MessageSquare,
   TrendingUp, PieChart, BarChart3, ArrowLeftRight, Eye, Lock,
   Smartphone, Download, ChevronRight
 } from 'lucide-react';
+import Logo from '../components/Logo';
+import Reveal from '../components/Reveal';
 
 /* ── Animated counter hook ─────────────────────── */
 function useCounter(end, duration = 2000) {
@@ -127,8 +129,21 @@ function TypingDemo() {
   );
 }
 
-/* ── Animated Pie Chart (SVG) ──────────────────── */
+/* ── Animated Pie Chart (SVG) — scroll-triggered ─ */
 function AnimatedPieChart() {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) { setVisible(true); obs.unobserve(el); }
+    }, { threshold: 0.3 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   const slices = [
     { pct: 35, color: '#14b8a6', label: '🍕 Food', amount: '₹4,200' },
     { pct: 20, color: '#8b5cf6', label: '🚗 Transport', amount: '₹2,400' },
@@ -140,7 +155,7 @@ function AnimatedPieChart() {
   let cumulative = 0;
 
   return (
-    <div className="flex items-center gap-6">
+    <div ref={ref} className="flex items-center gap-6">
       <div className="relative w-36 h-36 shrink-0">
         <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
           {slices.map((s, i) => {
@@ -153,23 +168,22 @@ function AnimatedPieChart() {
                 fill="none"
                 stroke={s.color}
                 strokeWidth="3.5"
-                strokeDasharray={`${s.pct} ${100 - s.pct}`}
-                strokeDashoffset={-offset}
+                strokeDasharray={visible ? `${s.pct} ${100 - s.pct}` : '0 100'}
+                strokeDashoffset={visible ? -offset : 0}
                 strokeLinecap="round"
-                className="transition-all duration-1000"
-                style={{ animationDelay: `${i * 0.2}s` }}
+                style={{ transition: `stroke-dasharray 1s cubic-bezier(.16,1,.3,1) ${i * 0.15}s, stroke-dashoffset 1s cubic-bezier(.16,1,.3,1) ${i * 0.15}s` }}
               />
             );
           })}
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <div className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-700 ${visible ? 'opacity-100 scale-100' : 'opacity-0 scale-75'}`} style={{ transitionDelay: '0.5s' }}>
           <p className="text-lg font-bold text-gray-900 dark:text-white">₹12K</p>
           <p className="text-[9px] text-gray-400 font-medium">this month</p>
         </div>
       </div>
       <div className="space-y-2 flex-1">
-        {slices.map((s) => (
-          <div key={s.label} className="flex items-center gap-2">
+        {slices.map((s, i) => (
+          <div key={s.label} className={`flex items-center gap-2 transition-all duration-500 ${visible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'}`} style={{ transitionDelay: `${0.3 + i * 0.1}s` }}>
             <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.color }} />
             <span className="text-xs text-gray-600 dark:text-gray-400 flex-1">{s.label}</span>
             <span className="text-xs font-bold text-gray-900 dark:text-white">{s.amount}</span>
@@ -180,31 +194,47 @@ function AnimatedPieChart() {
   );
 }
 
-/* ── Animated Bar Chart ────────────────────────── */
+/* ── Animated Bar Chart — scroll-triggered ──────── */
 function AnimatedBarChart() {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) { setVisible(true); obs.unobserve(el); }
+    }, { threshold: 0.3 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   const months = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan'];
   const values = [45, 62, 38, 78, 55, 90, 72];
   const max = Math.max(...values);
 
   return (
-    <div>
+    <div ref={ref}>
       <div className="flex items-end gap-2 h-32 mb-2">
         {values.map((v, i) => (
           <div key={i} className="flex-1 flex flex-col items-center gap-1">
-            <span className="text-[9px] font-bold text-gray-500 dark:text-gray-400">
+            <span className={`text-[9px] font-bold text-gray-500 dark:text-gray-400 transition-all duration-500 ${visible ? 'opacity-100' : 'opacity-0'}`} style={{ transitionDelay: `${0.4 + i * 0.08}s` }}>
               {i === values.length - 1 ? `₹${(v * 100).toLocaleString()}` : ''}
             </span>
             <div
-              className={`w-full rounded-t-lg chart-bar ${
+              className={`w-full rounded-t-lg ${
                 i === values.length - 1
                   ? 'bg-gradient-to-t from-violet-500 to-fuchsia-400 shadow-lg shadow-violet-500/20'
                   : i === values.length - 2
                   ? 'bg-gradient-to-t from-teal-500 to-emerald-400'
                   : 'bg-gray-200 dark:bg-white/10'
               }`}
-              style={{ height: `${(v / max) * 100}%` }}
+              style={{
+                height: visible ? `${(v / max) * 100}%` : '0%',
+                transition: `height 0.8s cubic-bezier(.16,1,.3,1) ${i * 0.1}s`,
+              }}
             />
-            <span className="text-[9px] text-gray-400 font-medium">{months[i]}</span>
+            <span className={`text-[9px] text-gray-400 font-medium transition-all duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`} style={{ transitionDelay: `${i * 0.08}s` }}>{months[i]}</span>
           </div>
         ))}
       </div>
@@ -219,15 +249,29 @@ export default function Landing() {
   const [splitsCount, splitsRef] = useCounter(98432, 2500);
   const [savedCount, savedRef] = useCounter(2847000, 2000);
 
+  /* scroll progress for logo */
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const handleScroll = useCallback(() => {
+    const h = document.documentElement;
+    setScrollProgress(h.scrollTop / (h.scrollHeight - h.clientHeight || 1));
+  }, []);
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
+
   return (
     <div className="min-h-screen bg-[#f8faf9] dark:bg-[#0a0f1a] overflow-hidden">
+      {/* Scroll Progress Bar */}
+      <div className="fixed top-0 left-0 right-0 h-[3px] z-[100] pointer-events-none">
+        <div className="h-full scroll-progress-bar" style={{ width: `${scrollProgress * 100}%` }} />
+      </div>
+
       {/* ───── Navbar ───── */}
       <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-white/70 dark:bg-[#0a0f1a]/80 border-b border-black/5 dark:border-white/5">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/welcome" className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-teal-500/20 animate-gradient-shift bg-[length:200%_200%]">
-              <Wallet className="w-5 h-5 text-white" />
-            </div>
+            <Logo size={36} className="rounded-xl shadow-lg shadow-teal-500/20" progress={scrollProgress} />
             <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Split<span className="text-teal-500">Karo</span></span>
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">
@@ -294,7 +338,7 @@ export default function Landing() {
           </div>
 
           {/* ── Hero Dashboard Mockup ── */}
-          <div className="mt-14 max-w-5xl mx-auto animate-slide-up stagger-4">
+          <Reveal animation="zoom" className="mt-14 max-w-5xl mx-auto">
             <div className="rounded-3xl overflow-hidden shadow-2xl shadow-black/10 dark:shadow-black/40 border border-black/5 dark:border-white/5 bg-white dark:bg-[#111827]">
               {/* Browser bar */}
               <div className="flex items-center gap-2 px-5 py-3 bg-gray-50/80 dark:bg-[#0d1117] border-b border-black/5 dark:border-white/5">
@@ -377,14 +421,14 @@ export default function Landing() {
                 </div>
               </div>
             </div>
-          </div>
+          </Reveal>
         </div>
       </section>
 
       {/* ───── Stats Counter ───── */}
       <section className="py-14 px-6">
         <div className="max-w-4xl mx-auto">
-          <div className="grid grid-cols-3 gap-4 sm:gap-8">
+          <Reveal stagger className="grid grid-cols-3 gap-4 sm:gap-8">
             {[
               { ref: usersRef, value: usersCount, suffix: '+', label: 'Happy Users 😊', icon: '👥' },
               { ref: splitsRef, value: splitsCount, suffix: '+', label: 'Expenses Split 🎯', icon: '💸' },
@@ -397,7 +441,7 @@ export default function Landing() {
                 <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium">{s.label}</p>
               </div>
             ))}
-          </div>
+          </Reveal>
         </div>
       </section>
 
@@ -405,6 +449,7 @@ export default function Landing() {
       <section id="ai" className="py-20 px-6 relative">
         <div className="absolute inset-0 bg-gradient-to-b from-violet-50/50 via-fuchsia-50/30 to-transparent dark:from-violet-500/[0.03] dark:via-fuchsia-500/[0.02] dark:to-transparent" />
         <div className="max-w-5xl mx-auto relative">
+          <Reveal animation="fade-up">
           <div className="text-center mb-14">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-violet-100 to-fuchsia-100 dark:from-violet-500/15 dark:to-fuchsia-500/15 text-violet-700 dark:text-violet-400 text-xs font-bold mb-4">
               <Brain className="w-3.5 h-3.5" /> AI-First Design <Sparkles className="w-3.5 h-3.5 text-fuchsia-500" />
@@ -420,12 +465,16 @@ export default function Landing() {
               Just talk to SplitKaro like you'd text a friend. fr fr 💯
             </p>
           </div>
+          </Reveal>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
             {/* Live typing demo */}
+            <Reveal animation="fade-right">
             <TypingDemo />
+            </Reveal>
 
             {/* AI capabilities */}
+            <Reveal animation="fade-left" stagger>
             <div className="space-y-4">
               {[
                 { icon: '🧠', title: 'Natural Language Parsing', desc: 'Type "chai 40 with Amit" — we get it. Amount, description, friends, all parsed instantly.', color: 'from-violet-500 to-purple-500' },
@@ -442,6 +491,7 @@ export default function Landing() {
                 </div>
               ))}
             </div>
+            </Reveal>
           </div>
         </div>
       </section>
@@ -449,6 +499,7 @@ export default function Landing() {
       {/* ───── Features Grid ───── */}
       <section id="features" className="py-20 px-6">
         <div className="max-w-6xl mx-auto">
+          <Reveal animation="fade-up">
           <div className="text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
               Everything you need to split smart 🎯
@@ -457,8 +508,9 @@ export default function Landing() {
               Built for Gen-Z. No boomer spreadsheets. Just vibes. ✌️
             </p>
           </div>
+          </Reveal>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <Reveal stagger className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {[
               { icon: Brain, emoji: '🤖', title: 'AI Smart Add', desc: 'Type naturally. We parse amount, friends, category. It\'s giving... magic.', gradient: 'from-violet-500 to-fuchsia-500' },
               { icon: Users, emoji: '👥', title: 'Squad Groups', desc: 'Flat gang, trip crew, lunch buddies — create groups and track every rupee.', gradient: 'from-teal-500 to-emerald-500' },
@@ -481,20 +533,22 @@ export default function Landing() {
                 </div>
               );
             })}
-          </div>
+          </Reveal>
         </div>
       </section>
 
       {/* ───── How It Works ───── */}
       <section className="py-20 px-6 bg-gradient-to-b from-transparent via-teal-50/40 to-transparent dark:via-teal-500/[0.03]">
         <div className="max-w-4xl mx-auto">
+          <Reveal animation="fade-up">
           <div className="text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
               3 steps. That's it. 🏃‍♂️💨
             </h2>
           </div>
+          </Reveal>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <Reveal stagger className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               { num: '01', emoji: '✍️', title: 'Sign up in 10s', desc: 'Name, email, password. Boom. You\'re in. No OTPs, no verification essays.' },
               { num: '02', emoji: '🤝', title: 'Add your people', desc: 'Search by email, add friends, create groups. Your squad, your rules.' },
@@ -512,21 +566,23 @@ export default function Landing() {
                 <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{step.desc}</p>
               </div>
             ))}
-          </div>
+          </Reveal>
         </div>
       </section>
 
       {/* ───── Testimonials ───── */}
       <section className="py-20 px-6">
         <div className="max-w-5xl mx-auto">
+          <Reveal animation="fade-up">
           <div className="text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
               People are obsessed 🫶
             </h2>
             <p className="text-gray-500 dark:text-gray-400 mt-2 text-base">Real users. Real splits. Real love.</p>
           </div>
+          </Reveal>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Reveal stagger className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
               { name: 'Rahul S.', role: 'IIT Delhi · CS', text: '"chai 40 with Amit" and it just WORKS. This is the future of splitting. no cap. 🧠🔥', avatar: 'R', grad: 'from-teal-500 to-emerald-500' },
               { name: 'Priya M.', role: 'Software Engineer', text: 'The monthly charts are so aesthetic I screenshot them. My flat expenses have never been this organized. 📊✨', avatar: 'P', grad: 'from-violet-500 to-purple-500' },
@@ -550,13 +606,14 @@ export default function Landing() {
                 </div>
               </div>
             ))}
-          </div>
+          </Reveal>
         </div>
       </section>
 
       {/* ───── Install as App (PWA) ───── */}
       <section className="py-16 px-6 bg-gradient-to-b from-transparent via-blue-50/30 to-transparent dark:via-blue-500/[0.02]">
         <div className="max-w-4xl mx-auto">
+          <Reveal animation="fade-up">
           <div className="rounded-3xl bg-white dark:bg-white/[0.03] border border-black/5 dark:border-white/5 p-8 sm:p-10 flex flex-col sm:flex-row items-center gap-8">
             <div className="flex-1">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-bold mb-3">
@@ -608,12 +665,14 @@ export default function Landing() {
               </div>
             </div>
           </div>
+          </Reveal>
         </div>
       </section>
 
       {/* ───── CTA Section ───── */}
       <section className="py-20 px-6">
         <div className="max-w-4xl mx-auto">
+          <Reveal animation="scale">
           <div className="relative rounded-3xl overflow-hidden p-10 sm:p-14 text-center">
             <div className="absolute inset-0 bg-gradient-to-br from-teal-500 via-emerald-500 to-cyan-500 animate-gradient-shift" />
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImEiIHBhdHRlcm5Vbml0cz0idXNlclNwYWNlT25Vc2UiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PHBhdGggZD0iTTAgMGg2MHY2MEgweiIgZmlsbD0ibm9uZSIvPjxjaXJjbGUgY3g9IjMwIiBjeT0iMzAiIHI9IjEuNSIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjEpIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCBmaWxsPSJ1cmwoI2EpIiB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIi8+PC9zdmc+')] opacity-40" />
@@ -635,16 +694,16 @@ export default function Landing() {
               </div>
             </div>
           </div>
+          </Reveal>
         </div>
       </section>
 
       {/* ───── Footer ───── */}
+      <Reveal animation="fade-up">
       <footer className="py-10 px-6 border-t border-black/5 dark:border-white/5">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center">
-              <Wallet className="w-4 h-4 text-white" />
-            </div>
+            <Logo size={32} className="rounded-lg shadow-md shadow-teal-500/15" />
             <span className="text-sm font-bold text-gray-900 dark:text-white">Split<span className="text-teal-500">Karo</span></span>
             <span className="text-xs text-gray-400 dark:text-gray-600">·</span>
             <span className="text-xs text-gray-400 dark:text-gray-600">Made with 💚 by VIRUS</span>
@@ -656,6 +715,7 @@ export default function Landing() {
           </div>
         </div>
       </footer>
+      </Reveal>
     </div>
   );
 }

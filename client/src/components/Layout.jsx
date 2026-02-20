@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
@@ -6,9 +6,10 @@ import { useTheme } from '../context/ThemeContext';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import {
   LayoutDashboard, Users, PlusCircle, Activity, UserPlus,
-  LogOut, Sun, Moon, Menu, X, Wallet, ChevronDown, Check,
+  LogOut, Sun, Moon, Menu, X, ChevronDown, Check,
   Wifi, WifiOff, RefreshCw, CloudOff
 } from 'lucide-react';
+import Logo from './Logo';
 
 const AVATAR_GRADIENTS = [
   'from-teal-500 to-emerald-500',
@@ -34,6 +35,20 @@ export default function Layout() {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [currencyOpen, setCurrencyOpen] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+
+  const handleScroll = useCallback(() => {
+    const scrollTop = window.scrollY;
+    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    const progress = docHeight > 0 ? Math.min(scrollTop / docHeight, 1) : 0;
+    setScrollProgress(progress);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
 
   const handleLogout = () => {
     logout();
@@ -55,9 +70,7 @@ export default function Layout() {
       {/* Logo */}
       <div className="p-5 border-b border-black/5 dark:border-white/5">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-teal-500/25">
-            <Wallet className="w-5 h-5 text-white" />
-          </div>
+          <Logo size={40} className="rounded-xl shadow-lg shadow-teal-500/25" progress={scrollProgress} />
           <div>
             <h1 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">SplitKaro</h1>
             <p className="text-[10px] font-medium text-teal-600 dark:text-teal-400">
@@ -162,12 +175,15 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen flex bg-[#f0f4f3] dark:bg-[#0a0f1a] gradient-mesh">
+      {/* Scroll Progress Bar */}
+      <div className="fixed top-0 left-0 right-0 h-[3px] z-[100] pointer-events-none">
+        <div className="h-full scroll-progress-bar" style={{ width: `${scrollProgress * 100}%` }} />
+      </div>
+
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 glass-nav px-4 py-3 flex items-center justify-between border-b border-black/5 dark:border-white/5" style={{ borderRight: 'none' }}>
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center shadow-md shadow-teal-500/20">
-            <Wallet className="w-4 h-4 text-white" />
-          </div>
+          <Logo size={32} className="rounded-lg shadow-md shadow-teal-500/20" progress={scrollProgress} />
           <span className="font-bold text-gray-900 dark:text-white tracking-tight">SplitKaro</span>
         </div>
         <button onClick={() => setMobileOpen(!mobileOpen)} className="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
@@ -229,7 +245,7 @@ export default function Layout() {
           </div>
         )}
 
-        <div className="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
           <Outlet />
         </div>
       </main>
